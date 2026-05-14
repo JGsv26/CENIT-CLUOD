@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cenit Cloud - SGE Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #1e3a8a; --primary-light: #2563eb; --secondary: #10b981;
+            --danger: #ef4444; --warning: #f59e0b; --bg: #f3f4f6; --card: #ffffff;
+            --whatsapp: #25d366; --parents: #8b5cf6; --director: #334155;
+            --gold: #ffd700; --silver: #c0c0c0; --bronze: #cd7f32;
+        }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: #1f2937; }
+        header { background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%); color: white; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .menu { background: white; padding: 0.5rem; display: flex; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
+        .menu button { background: transparent; border: 2px solid transparent; color: var(--primary); font-weight: 600; cursor: pointer; padding: 8px 16px; border-radius: 8px; }
+        .menu button.active { background: var(--primary); color: white; }
+        .main-grid { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        .panel { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display: none; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, select, textarea { padding: 10px; width: 100%; border: 1.5px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 10px 18px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--secondary); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-director { background: var(--director); color: white; }
+        .btn-asist-presente { background-color: #10b981; color: white; }
+        .btn-asist-ausente { background-color: #ef4444; color: white; }
+        .btn-asist-permiso { background-color: #f59e0b; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; min-width: 600px; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e5e7eb; font-size: 0.8rem; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+        tr:hover { background-color: #f9fafb; }
+        .login-card { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 20px 25px rgba(0,0,0,0.1); }
+        .pass-tag { background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; color: #1e293b; border: 1px solid #e2e8f0; font-weight: bold; }
+        .stat-card { border: 1px solid #ddd; padding: 15px; border-radius: 12px; transition: 0.3s; }
+        .badge-risk { background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
+        .tel-padre { display: block; font-size: 0.75rem; color: #25d366; font-weight: 600; margin-top: 3px; }
+        .boleta-materia { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px dashed #ddd; }
+        .honor-card { background: linear-gradient(135deg, #fffcf0 0%, #fff9e6 100%); border: 1px solid #ffeeb3; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .alerta-card { background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fed7d7; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+
+        /* Estilos de Toasts */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 14px 20px; border-radius: 10px; color: white; font-weight: 600; font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; min-width: 260px; display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: #10b981; }
+        .toast.error   { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        .toast.info    { background: #3b82f6; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(60px); } }
+
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input.input-error { border-color: #ef4444 !important; background: #fff5f5; }
+
+        /* NUEVOS ESTILOS PARA LAS MEJORAS */
+        .chart-container { position: relative; margin: 20px auto; height: 320px; width: 100%; background: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .btn-whatsapp-small { background-color: var(--whatsapp); color: white; padding: 4px 8px; border-radius: 6px; text-decoration: none; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s; }
+        .btn-whatsapp-small:hover { background-color: #128c7e; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<header>
+    <h2 style="margin:0">📚 CENIT CLOUD</h2>
+    <p id="subtitulo" style="opacity: 0.9; margin-top: 5px;">Métricas y Control Institucional</p>
+</header>
+
+<div id="loginBox" class="login-card">
+    <h3 style="text-align:center; margin-top:0">🔐 Acceso al Sistema</h3>
+    <select id="roleSelect" onchange="App.ui.toggleLoginFields()">
+        <option value="docente">Soy Docente</option>
+        <option value="padre">Soy Padre de Familia</option>
+        <option value="director">Dirección</option>
+    </select>
+    
+    <div id="fieldsDocente">
+        <input id="user" placeholder="Usuario">
+        <input id="pass" type="password" placeholder="Contraseña">
+    </div>
+
+    <div id="fieldsPadre" style="display:none;">
+        <input id="parentPhone" placeholder="WhatsApp Registrado">
+    </div>
+
+    <button id="btnLogin" onclick="App.auth.login()" class="btn-primary" style="width:100%">Ingresar</button>
+    
+    <div id="regDocente" style="margin-top:20px; border-top: 1px solid #eee; padding-top:10px;">
+        <p style="text-align:center; font-weight:bold">Registro Maestro</p>
+        <input id="newUser" placeholder="Usuario">
+        <input id="newPass" type="password" placeholder="Clave (mínimo 6 caracteres)">
+        <div style="display: flex; gap: 10px;">
+            <select id="newCiclo" style="flex: 1;"><option value="Ciclo 1">Ciclo 1</option><option value="Ciclo 2">Ciclo 2</option><option value="Ciclo 3">Ciclo 3</option></select>
+            <select id="newGrado" style="flex: 1;">
+                <option value="1° Grado">1° Grado</option><option value="2° Grado">2° Grado</option><option value="3° Grado">3° Grado</option>
+                <option value="4° Grado">4° Grado</option><option value="5° Grado">5° Grado</option><option value="6° Grado">6° Grado</option>
+                <option value="7° Grado">7° Grado</option><option value="8° Grado">8° Grado</option><option value="9° Grado">9° Grado</option>
+            </select>
+        </div>
+        <button id="btnRegistrar" onclick="App.auth.register()" class="btn-success" style="width:100%">Crear Cuenta</button>
+    </div>
+</div>
+
+<div id="app" style="display:none;">
+    <div class="menu">
+        <button id="btnRegistro" onclick="App.ui.mostrarSeccion('registro')">👥 Control de Grupo</button>
+        <button id="btnReporte" onclick="App.ui.mostrarSeccion('reporte')">📈 Notas y Evaluación</button>
+        <button id="btnPadres" onclick="App.ui.mostrarSeccion('panelPadres')" style="display:none;">👨‍👩‍👧 Portal Familiar</button>
+        <button id="btnDirector" onclick="App.ui.mostrarSeccion('panelDirector')" style="display:none;">🏛️ Dirección</button>
+        <button onclick="App.auth.logout()" class="btn-danger" style="margin-left:auto">Salir</button>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel" id="registro">
+            <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap:10px;">
+                <h4 id="titleReg" style="margin:0">Asistencia y Reportes</h4>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="App.core.iniciarNuevoDia()" class="btn-warning">☀️ Nuevo Día</button>
+                    <button onclick="App.core.downloadMyPDF()" class="btn-director">📥 Informe PDF</button>
+                </div>
+            </div>
+            
+            <div id="formRegistro" style="background:#f0f7ff; padding:15px; border-radius:12px; margin: 20px 0;">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input id="nomEst" placeholder="Nombre completo" style="flex:2; margin:0">
+                    <input id="telRep" placeholder="WhatsApp" style="flex:1; margin:0">
+                    <button onclick="App.core.addStudent()" class="btn-success">Inscribir</button>
+                </div>
+                <input type="text" id="filtroAlumno" placeholder="🔍 Buscar alumno en la lista..." onkeyup="App.ui.filtrarLista()" style="background: white; border: 1px solid var(--primary); margin:0">
+            </div>
+            <div id="listaAlumnos">Cargando...</div>
+        </div>
+
+        <div class="panel" id="reporte">
+            <h3 id="titleNotas">📊 Registro Multi-Materia</h3>
+            <div style="background:#fff9f0; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #ffeeba">
+                <label><strong>Seleccione Materia a Evaluar:</strong></label>
+                <select id="materiaActiva" style="margin-top:10px;">
+                    <option value="Matemáticas">Matemáticas</option>
+                    <option value="Lenguaje">Lenguaje</option>
+                    <option value="Ciencias">Ciencias</option>
+                    <option value="Estudios Sociales">Estudios Sociales</option>
+                    <option value="Inglés">Inglés</option>
+                    <option value="Informática">Informática</option>
+                    <option value="Ortografía">Ortografía</option>
+                </select>
+            </div>
+            <div id="tablaReporte"></div>
+        </div>
+
+        <div class="panel" id="panelPadres"><h2>Boleta Digital de Calificaciones</h2><div id="hijosContainer"></div></div>
+        
+        <div class="panel" id="panelDirector">
+            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+                <h3>🏛️ Supervisión Institucional</h3>
+                <button id="btnBackDir" onclick="App.core.loadDirectorData()" class="btn-warning" style="display:none;">⬅️ Volver a Lista</button>
+            </div>
+            <div id="directorContent"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDMFHzyzj287hBAjdeg3KjcrYMksXe5Ejw",
+  authDomain: "cemo-pro.firebaseapp.com",
+  databaseURL: "https://cemo-pro-default-rtdb.firebaseio.com",
+  projectId: "cemo-pro",
+  storageBucket: "cemo-pro.firebasestorage.app",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const Toast = {
+    show(mensaje, tipo = 'info', duracion = 3500) {
+        const iconos = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.innerHTML = `<span>${iconos[tipo]}</span><span>${mensaje}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, duracion);
+    },
+    success(msg) { this.show(msg, 'success'); },
+    error(msg)   { this.show(msg, 'error', 4500); },
+    warning(msg) { this.show(msg, 'warning', 4000); },
+    info(msg)    { this.show(msg, 'info'); }
+};
+
+const Validar = {
+    limpiarErrores(ids) {
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.remove('input-error');
+        });
+    },
+    marcarError(id) {
+        const el = document.getElementById(id);
+        if(el) { el.classList.add('input-error'); el.focus(); }
+    },
+    usuario(valor) {
+        if(!valor || valor.trim().length < 3) return 'El usuario debe tener al menos 3 caracteres.';
+        if(!/^[a-zA-Z0-9_]+$/.test(valor)) return 'El usuario solo puede tener letras, números y guión bajo.';
+        return null;
+    },
+    clave(valor) {
+        if(!valor || valor.length < 6) return 'La clave debe tener al menos 6 caracteres.';
+        return null;
+    },
+    telefono(valor) {
+        if(!valor || valor.trim().length < 7) return 'Ingresa un número de WhatsApp válido.';
+        return null;
+    },
+    nombre(valor) {
+        if(!valor || valor.trim().length < 3) return 'El nombre debe tener al menos 3 caracteres.';
+        return null;
+    }
+};
+
+function setBtnLoading(btnId, loading, textoOriginal) {
+    const btn = document.getElementById(btnId);
+    if(!btn) return;
+    if(loading) {
+        btn.disabled = true;
+        btn.dataset.original = btn.innerHTML;
+        btn.innerHTML = `<span class="spinner"></span> Procesando...`;
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal || btn.dataset.original || 'Aceptar';
+    }
+}
+
+const App = {
+    state: { user: null, role: null, grado: null, phone: null, dataCache: null, isSpy: false, chartInstance: null },
+
+    helpers: {
+        calcularPromedio(notas) {
+            if(!notas || notas.length === 0) return 0;
+            const validas = notas.filter(n => typeof n === 'object' ? n.valor > 0 : n > 0);
+            if(validas.length === 0) return 0;
+            const suma = validas.reduce((acc, n) => acc + (typeof n === 'object' ? n.valor : n), 0);
+            return (suma / validas.length).toFixed(1);
+        },
+        agruparPorMateria(notas) {
+            const materias = {};
+            notas.forEach(n => {
+                if(typeof n === 'object' && n.materia) {
+                    if(!materias[n.materia]) materias[n.materia] = [];
+                    materias[n.materia].push(n.valor);
+                }
+            });
+            return materias;
+        }
+    },
+
+    auth: {
+        register() {
+            const u = document.getElementById('newUser').value.trim();
+            const p = document.getElementById('newPass').value;
+            const c = document.getElementById('newCiclo').value;
+            const g = document.getElementById('newGrado').value;
+            Validar.limpiarErrores(['newUser', 'newPass']);
+            const errUser = Validar.usuario(u);
+            if(errUser) { Validar.marcarError('newUser'); Toast.error(errUser); return; }
+            const errPass = Validar.clave(p);
+            if(errPass) { Validar.marcarError('newPass'); Toast.error(errPass); return; }
+            setBtnLoading('btnRegistrar', true);
+            db.ref('users/' + u).once('value', snapshot => {
+                if(snapshot.exists()) {
+                    setBtnLoading('btnRegistrar', false, 'Crear Cuenta');
+                    Validar.marcarError('newUser');
+                    Toast.error(`El usuario "${u}" ya está registrado.`);
+                    return;
+                }
+                db.ref('users/' + u).set({ pass: p, grado: g, ciclo: c, role: 'docente' })
+                    .then(() => {
+                        setBtnLoading('btnRegistrar', false, 'Crear Cuenta');
+                        Toast.success(`✔ Maestro "${u}" registrado.`);
+                        document.getElementById('newUser').value = '';
+                        document.getElementById('newPass').value = '';
+                    });
+            });
+        },
+        login() {
+            const role = document.getElementById('roleSelect').value;
+            const u = document.getElementById('user').value.trim();
+            const p = document.getElementById('pass').value;
+            Validar.limpiarErrores(['user', 'pass', 'parentPhone']);
+            setBtnLoading('btnLogin', true);
+            if(role === 'director') {
+                db.ref('config/director').once('value', s => {
+                    setBtnLoading('btnLogin', false, 'Ingresar');
+                    const cfg = s.val();
+                    const userValido = cfg ? u === cfg.user : u === 'admin';
+                    const passValida = cfg ? p === cfg.pass : p === 'cemo2024';
+                    if(userValido && passValida) {
+                        App.state.role = 'director';
+                        App.ui.initApp("Dirección Institucional");
+                        App.core.loadDirectorData();
+                        Toast.info('Bienvenido, Director.');
+                    } else { Toast.error('Credenciales incorrectas.'); }
+                });
+            } else if(role === 'padre') {
+                const tel = document.getElementById('parentPhone').value.trim();
+                if(Validar.telefono(tel)) { setBtnLoading('btnLogin', false); Toast.error('Teléfono inválido'); return; }
+                App.state.role = 'padre'; App.state.phone = tel;
+                App.ui.initApp("Portal Padres");
+                App.core.loadParentData();
+                setBtnLoading('btnLogin', false);
+            } else {
+                db.ref('users/' + u).once('value', s => {
+                    setBtnLoading('btnLogin', false);
+                    const d = s.val();
+                    if(d && d.pass === p) {
+                        App.state.user = u; App.state.role = d.role; App.state.grado = d.grado;
+                        App.ui.initApp("Docente: " + u);
+                        App.core.listenData();
+                        Toast.success(`Bienvenido, ${u}`);
+                    } else { Toast.error('Usuario o clave incorrectos.'); }
+                });
+            }
+        },
+        logout() { location.reload(); }
+    },
+
+    core: {
+        addStudent() {
+            const n = document.getElementById('nomEst').value.trim();
+            const t = document.getElementById('telRep').value.trim();
+            if(!n || !t) { Toast.error('Completa los campos'); return; }
+            db.ref(`grados/${App.state.grado}/${Date.now()}`).set({
+                nombre: n, whatsapp: t, notas: [{valor: 0, materia: "Inicial"}],
+                asistencia: 'PRESENTE', presencias: 1, totalDias: 1, conducta: 'Sin reportes'
+            }).then(() => {
+                document.getElementById('nomEst').value = ''; document.getElementById('telRep').value = '';
+                Toast.success(`Alumno inscrito.`);
+            });
+        },
+        // MEJORADO: Iniciar nuevo día con actualización masiva (Batch update)
+        iniciarNuevoDia() {
+            if(!confirm("¿Registrar nuevo día para todos los alumnos?")) return;
+            const alums = App.state.dataCache;
+            const updates = {};
+            for(let id in alums) {
+                updates[`${id}/asistencia`] = 'PRESENTE';
+                updates[`${id}/totalDias`] = (parseInt(alums[id].totalDias || 0) + 1);
+                updates[`${id}/presencias`] = (parseInt(alums[id].presencias || 0) + 1);
+            }
+            db.ref(`grados/${App.state.grado}`).update(updates)
+                .then(() => Toast.success("Nuevo día iniciado para todo el grupo."))
+                .catch(() => Toast.error("Error al actualizar datos."));
+        },
+        cycleAsistencia(id, actual, presencias, total) {
+            const flujo = { 'PRESENTE': 'AUSENTE', 'AUSENTE': 'PERMISO', 'PERMISO': 'PRESENTE' };
+            const nuevoEstado = flujo[actual] || 'PRESENTE';
+            let p = parseInt(presencias || 0), t = parseInt(total || 0);
+            if(nuevoEstado === 'PRESENTE') p++; else if(actual === 'PRESENTE') p--;
+            db.ref(`grados/${App.state.grado}/${id}`).update({ asistencia: nuevoEstado, presencias: p < 0 ? 0 : p, totalDias: t === 0 ? 1 : t });
+        },
+        updateConducta(id, texto) { db.ref(`grados/${App.state.grado}/${id}`).update({ conducta: texto }); },
+        addNota(id) {
+            const input = document.getElementById(`nota_in_${id}`);
+            const mat = document.getElementById('materiaActiva').value;
+            const valor = parseFloat(input.value);
+            if(isNaN(valor) || valor < 0 || valor > 10) { Toast.error('Nota inválida'); return; }
+            const alumnoRef = db.ref(`grados/${App.state.grado}/${id}/notas`);
+            alumnoRef.once('value', s => {
+                let lista = s.val() || [];
+                if(lista.length === 1 && lista[0].valor === 0) lista = [];
+                lista.push({ valor: valor, materia: mat, fecha: new Date().toLocaleDateString() });
+                alumnoRef.set(lista).then(() => { input.value = ''; Toast.success('Nota guardada'); });
+            });
+        },
+        listenData() {
+            db.ref(`grados/${App.state.grado}`).on('value', s => {
+                App.state.dataCache = s.val() || {};
+                App.ui.renderMaestro(App.state.dataCache);
+            });
+        },
+        loadDirectorData() {
+            App.state.isSpy = false;
+            document.getElementById('btnBackDir').style.display = 'none';
+            db.ref('users').on('value', sU => {
+                db.ref('grados').on('value', sG => {
+                    App.ui.renderDirector(sU.val() || {}, sG.val() || {});
+                });
+            });
+        },
+        spyGrado(grado, maestro) {
+            App.state.isSpy = true;
+            document.getElementById('btnBackDir').style.display = 'block';
+            db.ref(`grados/${grado}`).on('value', s => {
+                const alums = s.val() || {};
+                const listaOrdenada = [];
+                for(let id in alums) {
+                    const prom = parseFloat(App.helpers.calcularPromedio(alums[id].notas));
+                    listaOrdenada.push({ ...alums[id], prom });
+                }
+                const top3 = [...listaOrdenada].sort((a,b) => b.prom - a.prom).slice(0,3).filter(x => x.prom > 0);
+                const riesgo = listaOrdenada.filter(x => x.prom > 0 && x.prom < 6);
+
+                let h = `<h3>📊 Análisis: ${grado}</h3>`;
+                if(top3.length > 0) {
+                    h += `<div class="honor-card"><h4>🏆 Cuadro de Honor</h4><div style="display:flex; gap:10px; flex-wrap:wrap;">`;
+                    const medallas = ["🥇","🥈","🥉"];
+                    top3.forEach((a, i) => h += `<div style="background:white; padding:10px; border-radius:8px; flex:1; min-width:150px; border:1px solid #ffeeb3"><b>${medallas[i]} ${a.nombre}</b><br><span style="color:var(--primary)">Promedio: ${a.prom}</span></div>`);
+                    h += `</div></div>`;
+                }
+                if(riesgo.length > 0) {
+                    h += `<div class="alerta-card"><h4>⚠️ Alumnos en Riesgo</h4><ul>`;
+                    riesgo.forEach(a => h += `<li><b>${a.nombre}</b> - Promedio: <span style="color:red">${a.prom}</span></li>`);
+                    h += `</ul></div>`;
+                }
+                h += `<table><tr><th>Estudiante</th><th>Asis</th><th>Prom. Gral</th><th>Reporte</th></tr>`;
+                for(let id in alums) {
+                    const p = App.helpers.calcularPromedio(alums[id].notas);
+                    h += `<tr><td>${alums[id].nombre}</td><td>${alums[id].asistencia}</td><td style="font-weight:bold; color:${p<6?'red':'green'}">${p}</td><td>${alums[id].conducta}</td></tr>`;
+                }
+                document.getElementById('directorContent').innerHTML = h + "</table>";
+            });
+        },
+        loadParentData() {
+            db.ref('grados').on('value', s => {
+                const t = s.val() || {}; let h = [];
+                for(let g in t) for(let id in t[g]) if(t[g][id].whatsapp == App.state.phone) h.push(t[g][id]);
+                App.ui.renderPadres(h);
+            });
+        },
+        generatePDF(maestro, grado, alumnos) {
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            const fecha = new Date().toLocaleDateString();
+            doc.text(`REPORTE CENIT CLOUD - ${grado} - FECHA: ${fecha}`, 15, 15);
+            const r = [];
+            for(let id in alumnos) {
+                const a = alumnos[id], pr = App.helpers.calcularPromedio(a.notas);
+                r.push([a.nombre, a.asistencia, pr, a.conducta]);
+            }
+            doc.autoTable({ startY: 25, head: [['Nombre', 'Asis', 'Prom', 'Conducta']], body: r });
+            doc.save(`Reporte_${grado}_${fecha}.pdf`);
+        },
+        downloadMyPDF() { this.generatePDF(App.state.user || "Docente", App.state.grado, App.state.dataCache); }
+    },
+
+    ui: {
+        toggleLoginFields() {
+            const r = document.getElementById('roleSelect').value;
+            document.getElementById('fieldsDocente').style.display = r === 'padre' ? 'none' : 'block';
+            document.getElementById('fieldsPadre').style.display = r === 'padre' ? 'block' : 'none';
+        },
+        initApp(txt) {
+            document.getElementById('loginBox').style.display='none';
+            document.getElementById('app').style.display='block';
+            document.getElementById('subtitulo').innerText = txt;
+            if(App.state.role === 'director') {
+                document.getElementById('btnDirector').style.display='block';
+                document.getElementById('formRegistro').style.display='none';
+                App.ui.mostrarSeccion('panelDirector');
+            } else if(App.state.role === 'padre') {
+                document.getElementById('btnPadres').style.display='block';
+                App.ui.mostrarSeccion('panelPadres');
+            } else { App.ui.mostrarSeccion('registro'); }
+        },
+        mostrarSeccion(id) {
+            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+        },
+        // MEJORA: Filtro dinámico de alumnos
+        filtrarLista() {
+            const busqueda = document.getElementById('filtroAlumno').value.toLowerCase();
+            const filas = document.querySelectorAll('#listaAlumnos tr');
+            filas.forEach((fila, index) => {
+                if(index === 0) return; // Saltar cabecera
+                const nombre = fila.innerText.toLowerCase();
+                fila.style.display = nombre.includes(busqueda) ? "" : "none";
+            });
+        },
+        renderMaestro(data) {
+            let h = `<table><tr><th>Estudiante / Contacto</th><th>Asistencia</th><th>Reporte Conducta</th></tr>`;
+            let r = `<table><tr><th>Estudiante</th><th>Nueva Nota</th><th>Materias</th><th>Prom. Gral</th></tr>`;
+            for(let id in data) {
+                const a = data[id], pr = App.helpers.calcularPromedio(a.notas), mats = App.helpers.agruparPorMateria(a.notas);
+                let colorClase = a.asistencia === 'AUSENTE' ? 'btn-asist-ausente' : (a.asistencia === 'PERMISO' ? 'btn-asist-permiso' : 'btn-asist-presente');
+                
+                const waMsg = encodeURIComponent(`Hola, le escribo de Cenit Cloud para informarle sobre el desempeño de ${a.nombre}.`);
+                const waLink = `https://wa.me/${a.whatsapp.replace(/\D/g,'')}?text=${waMsg}`;
+
+                // MEJORA: Contador de días asistidos debajo del botón
+                h += `<tr><td style="text-align:left">
+                        <strong>${a.nombre}</strong>
+                        <div style="margin-top:4px; display:flex; align-items:center; gap:8px;">
+                            <span class="tel-padre" style="margin:0">📱 ${a.whatsapp}</span>
+                            <a href="${waLink}" target="_blank" class="btn-whatsapp-small"><i class="fab fa-whatsapp"></i> Chat</a>
+                        </div>
+                    </td>
+                    <td>
+                        <button onclick="App.core.cycleAsistencia('${id}','${a.asistencia}',${a.presencias},${a.totalDias})" class="${colorClase}" style="min-width:100px">${a.asistencia}</button>
+                        <div style="font-size:10px; margin-top:4px; color:#64748b;">${a.presencias || 0} / ${a.totalDias || 0} asistencias</div>
+                    </td>
+                    <td><input value="${a.conducta || ''}" onchange="App.core.updateConducta('${id}', this.value)" placeholder="Reporte..." style="margin:0; font-size:12px;"></td></tr>`;
+                
+                r += `<tr><td style="text-align:left"><strong>${a.nombre}</strong></td>
+                    <td><div style="display:flex; gap:5px"><input type="number" id="nota_in_${id}" placeholder="Nota" style="margin:0; width:65px"><button onclick="App.core.addNota('${id}')" class="btn-success">+</button></div></td>
+                    <td><small>${Object.keys(mats).length} mat.</small></td>
+                    <td style="color:${pr>=6?'#10b981':'#ef4444'}; font-weight:bold">${pr}</td></tr>`;
+            }
+            document.getElementById('listaAlumnos').innerHTML = h+"</table>";
+            document.getElementById('tablaReporte').innerHTML = r+"</table>";
+            this.filtrarLista(); // Re-aplicar filtro si existe búsqueda activa
+        },
+
+        renderDirector(users, grados) {
+            if(App.state.isSpy) return;
+            let h = `<table><thead><tr><th>Docente</th><th>Grado</th><th>Acción</th></tr></thead><tbody>`;
+            for(let u in users) if(users[u].role === 'docente') {
+                const d = users[u], g = d.grado || "N/A", alums = grados[g] || {};
+                h += `<tr><td style="text-align:left">👤 ${u}</td><td>${g}</td>
+                    <td><button class="btn-success" onclick="App.core.spyGrado('${g}','${u}')">📊 Monitor</button>
+                    <button class="btn-director" onclick='App.core.generatePDF("${u}","${g}",${JSON.stringify(alums)})'>📥</button></td></tr>`;
+            }
+            document.getElementById('directorContent').innerHTML = h + "</tbody></table>";
+            App.ui.renderDashboardGrafico(users, grados);
+        },
+
+        renderDashboardGrafico(users, grados) {
+            if(App.state.role !== 'director') return;
+            
+            let labels = [];
+            let promedios = [];
+            let colores = [];
+
+            let htmlDashboard = `<h4>📈 Monitor de Rendimiento Institucional</h4>`;
+            htmlDashboard += `<div class="chart-container"><canvas id="graficaGlobal"></canvas></div>`;
+            htmlDashboard += `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:15px; margin-top:20px;">`;
+
+            for(let u in users) if(users[u].role === 'docente') {
+                const g = users[u].grado, alums = grados[g] || {};
+                let suma = 0, cant = 0, bajos = 0;
+                for(let id in alums) {
+                    const p = parseFloat(App.helpers.calcularPromedio(alums[id].notas));
+                    if(p>0){ suma += p; cant++; if(p < 6) bajos++; }
+                }
+                const prom = cant > 0 ? (suma/cant).toFixed(1) : 0;
+                
+                labels.push(g);
+                promedios.push(prom);
+                colores.push(prom < 6 ? '#ef4444' : '#2563eb');
+
+                htmlDashboard += `<div class="stat-card" style="background:${prom < 6 ? '#fff1f2' : '#f0fdf4'}">
+                    <strong>${g}</strong><br>
+                    <span style="font-size:1.4rem; color:var(--primary)">${prom} Prom.</span><br>
+                    <span class="badge-risk">${bajos} alumnos en alerta</span>
+                </div>`;
+            }
+            
+            document.getElementById('tablaReporte').innerHTML = htmlDashboard + "</div>";
+
+            setTimeout(() => {
+                const ctx = document.getElementById('graficaGlobal');
+                if(!ctx) return;
+                if(App.state.chartInstance) App.state.chartInstance.destroy();
+                App.state.chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Promedio General',
+                            data: promedios,
+                            backgroundColor: colores,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, max: 10 } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }, 150);
+        },
+
+        renderPadres(hijos) {
+            let html = "";
+            hijos.forEach(h => {
+                const prGral = App.helpers.calcularPromedio(h.notas), mats = App.helpers.agruparPorMateria(h.notas);
+                let listaMats = "";
+                for(let m in mats) {
+                    const pM = (mats[m].reduce((a,b)=>a+b,0)/mats[m].length).toFixed(1);
+                    listaMats += `<div class="boleta-materia"><span>${m}</span><strong style="color:${pM>=6?'#10b981':'#ef4444'}">${pM}</strong></div>`;
+                }
+                html += `<div style="background:white; padding:20px; border-radius:15px; margin-bottom:20px; border:1px solid #eee;">
+                    <h3 style="margin-top:0; color:var(--primary)">🎓 ${h.nombre}</h3>
+                    <div>${listaMats || "Sin notas."}</div>
+                    <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-top:10px; display:flex; justify-content:space-between">
+                        <span><b>PROMEDIO GRAL:</b></span><span style="font-size:1.2rem; color:var(--primary)"><b>${prGral}</b></span>
+                    </div>
+                    <p><small><b>Conducta:</b> ${h.conducta}</small></p></div>`;
+            });
+            document.getElementById('hijosContainer').innerHTML = html || "No se encontraron hijos.";
+        }
+    }
+};
+</script>
+</body>
+</html>
