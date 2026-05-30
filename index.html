@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
-<head><link rel="icon" href="icon.png" type="image/png.jpg">
-
-<link rel="apple-touch-icon" href="icon.png.jpg"
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cenit Cloud - SGE Pro</title>
@@ -356,7 +354,6 @@ const App = {
                 Toast.success(`Alumno inscrito.`);
             });
         },
-        // MEJORADO: Iniciar nuevo día con actualización masiva (Batch update)
         iniciarNuevoDia() {
             if(!confirm("¿Registrar nuevo día para todos los alumnos?")) return;
             const alums = App.state.dataCache;
@@ -484,7 +481,6 @@ const App = {
             document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
             document.getElementById(id).style.display = 'block';
         },
-        // MEJORA: Filtro dinámico de alumnos
         filtrarLista() {
             const busqueda = document.getElementById('filtroAlumno').value.toLowerCase();
             const filas = document.querySelectorAll('#listaAlumnos tr');
@@ -495,7 +491,7 @@ const App = {
             });
         },
         renderMaestro(data) {
-            let h = `<table><tr><th>Estudiante / Contacto</th><th>Asistencia</th><th>Reporte Conducta</th></tr>`;
+            let h = `<table><tr><th>Estudiante / Contacto</th><th>Asistencia</th><th>Reporte Conducta</th><th>Acción</th></tr>`;
             let r = `<table><tr><th>Estudiante</th><th>Nueva Nota</th><th>Materias</th><th>Prom. Gral</th></tr>`;
             for(let id in data) {
                 const a = data[id], pr = App.helpers.calcularPromedio(a.notas), mats = App.helpers.agruparPorMateria(a.notas);
@@ -504,7 +500,6 @@ const App = {
                 const waMsg = encodeURIComponent(`Hola, le escribo de Cenit Cloud para informarle sobre el desempeño de ${a.nombre}.`);
                 const waLink = `https://wa.me/${a.whatsapp.replace(/\D/g,'')}?text=${waMsg}`;
 
-                // MEJORA: Contador de días asistidos debajo del botón
                 h += `<tr><td style="text-align:left">
                         <strong>${a.nombre}</strong>
                         <div style="margin-top:4px; display:flex; align-items:center; gap:8px;">
@@ -516,7 +511,10 @@ const App = {
                         <button onclick="App.core.cycleAsistencia('${id}','${a.asistencia}',${a.presencias},${a.totalDias})" class="${colorClase}" style="min-width:100px">${a.asistencia}</button>
                         <div style="font-size:10px; margin-top:4px; color:#64748b;">${a.presencias || 0} / ${a.totalDias || 0} asistencias</div>
                     </td>
-                    <td><input value="${a.conducta || ''}" onchange="App.core.updateConducta('${id}', this.value)" placeholder="Reporte..." style="margin:0; font-size:12px;"></td></tr>`;
+                    <td><input value="${a.conducta || ''}" onchange="App.core.updateConducta('${id}', this.value)" placeholder="Reporte..." style="margin:0; font-size:12px;"></td>
+                    <td>
+                        <button class="btn-danger" onclick="if(confirm('¿Eliminar al estudiante ${a.nombre}?')) db.ref('grados/${App.state.grado}/${id}').remove().then(() => Toast.success('Estudiante eliminado'))" style="padding: 6px 10px; font-size: 0.8rem;"><i class="fas fa-user-minus"></i></button>
+                    </td></tr>`;
                 
                 r += `<tr><td style="text-align:left"><strong>${a.nombre}</strong></td>
                     <td><div style="display:flex; gap:5px"><input type="number" id="nota_in_${id}" placeholder="Nota" style="margin:0; width:65px"><button onclick="App.core.addNota('${id}')" class="btn-success">+</button></div></td>
@@ -530,12 +528,19 @@ const App = {
 
         renderDirector(users, grados) {
             if(App.state.isSpy) return;
-            let h = `<table><thead><tr><th>Docente</th><th>Grado</th><th>Acción</th></tr></thead><tbody>`;
+            let h = `<table><thead><tr><th>Docente / Usuario</th><th>Contraseña</th><th>Grado</th><th>Acción</th></tr></thead><tbody>`;
             for(let u in users) if(users[u].role === 'docente') {
                 const d = users[u], g = d.grado || "N/A", alums = grados[g] || {};
-                h += `<tr><td style="text-align:left">👤 ${u}</td><td>${g}</td>
-                    <td><button class="btn-success" onclick="App.core.spyGrado('${g}','${u}')">📊 Monitor</button>
-                    <button class="btn-director" onclick='App.core.generatePDF("${u}","${g}",${JSON.stringify(alums)})'>📥</button></td></tr>`;
+                h += `<tr>
+                    <td style="text-align:left">👤 ${u}</td>
+                    <td><span class="pass-tag">${d.pass || ''}</span></td>
+                    <td>${g}</td>
+                    <td>
+                        <button class="btn-success" onclick="App.core.spyGrado('${g}','${u}')">📊 Monitor</button>
+                        <button class="btn-director" onclick='App.core.generatePDF("${u}","${g}",${JSON.stringify(alums)})'>📥</button>
+                        <button class="btn-danger" onclick="if(confirm('¿Eliminar al docente ${u}?')) db.ref('users/${u}').remove().then(() => Toast.success('Docente eliminado'))" style="padding: 4px 10px; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
             }
             document.getElementById('directorContent').innerHTML = h + "</tbody></table>";
             App.ui.renderDashboardGrafico(users, grados);
